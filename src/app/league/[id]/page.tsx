@@ -11,7 +11,7 @@ export default async function LeaguePage({
 
   const { data: league, error } = await supabase
     .from('leagues')
-    .select('id, name, status, invite_code')
+    .select('id, name, status, owner_id, invite_code')
     .eq('id', id)
     .single()
 
@@ -23,14 +23,8 @@ export default async function LeaguePage({
     )
   }
 
-  const { data: members, error: membersErr } = await supabase
-  .from('league_members')
-  .select('user_id, team_name')
-  .eq('league_id', id)
-
-  if (membersErr) {
-    console.log('membersErr', membersErr.message)
-  }
+  const { data: members } = await supabase
+    .rpc('get_league_members', { p_league_id: id })
 
 
   return (
@@ -47,11 +41,21 @@ export default async function LeaguePage({
 
       <div className="mt-6 rounded border p-4">
         <h2 className="font-semibold">Members</h2>
-        <ul className="mt-2 list-disc pl-5">
-          {members?.map((m) => (
-            <li key={m.user_id}>{m.team_name}</li>
-          ))}
-        </ul>
+
+        {!members || members.length === 0 ? (
+          <p className="mt-2 text-sm text-gray-600">No members found.</p>
+        ) : (
+          <ul className="mt-2 space-y-2">
+            {members.map((m: any) => (
+              <li key={m.user_id} className="flex items-center justify-between rounded border p-2">
+                <span>{m.team_name}</span>
+                {m.user_id === league.owner_id && (
+                  <span className="rounded bg-gray-100 px-2 py-1 text-xs">Owner</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </main>
   )
