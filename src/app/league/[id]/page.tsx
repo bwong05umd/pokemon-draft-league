@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { startDraft } from './actions'
 
 export default async function LeaguePage({
   params,
@@ -9,9 +10,13 @@ export default async function LeaguePage({
 
   const supabase = await createClient()
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   const { data: league, error } = await supabase
     .from('leagues')
-    .select('id, name, status, owner_id, invite_code')
+    .select('id, name, status, owner_id, invite_code, locked_team_count')
     .eq('id', id)
     .single()
 
@@ -26,11 +31,33 @@ export default async function LeaguePage({
   const { data: members } = await supabase
     .rpc('get_league_members', { p_league_id: id })
 
+  const isOwner = user?.id === league.owner_id
+  const canStart = league.status === 'setup'
 
   return (
     <main className="mx-auto max-w-2xl p-6">
       <h1 className="text-3xl font-bold">{league.name}</h1>
       <p className="mt-2 text-sm text-gray-600">Status: {league.status}</p>
+      {league.locked_team_count && (
+        <p className="mt-1 text-sm text-gray-600">
+          Locked teams: {league.locked_team_count}
+        </p>
+      )}
+
+      {isOwner && canStart && (
+        <div className="mt-4 rounded border p-4">
+          <h2 className="font-semibold">Owner controls</h2>
+          <form action={startDraft} className="mt-3">
+            <input type="hidden" name="leagueId" value={league.id} />
+            <button className="rounded bg-black px-4 py-2 text-white">
+              Start Draft
+            </button>
+            <p className="mt-2 text-sm text-gray-600">
+              Requires 8–16 members. This will lock the league size.
+            </p>
+          </form>
+        </div>
+      )}
 
       <div className="mt-4 rounded border p-4">
         <p className="text-sm text-gray-600">Invite link</p>
