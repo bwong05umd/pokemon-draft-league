@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { startDraft } from './actions'
 import { rerollOrderFromLeaguePage } from './reroll-actions'
+import { importPool } from './pool-actions'
 
 export default async function LeaguePage({
   params,
@@ -51,6 +52,13 @@ export default async function LeaguePage({
 
   const { data: members } = await supabase
     .rpc('get_league_members', { p_league_id: id })
+
+  const { data: pool } = await supabase
+    .from('league_pokemon_pool')
+    .select('id, name, base_points, base_projection, positions, sprite_url')
+    .eq('league_id', id)
+    .order('base_projection', { ascending: false })
+    .limit(50)
 
   const isOwner = user?.id === league.owner_id
   const canStart = league.status === 'setup'
@@ -135,6 +143,31 @@ export default async function LeaguePage({
             <p className="mt-2 text-sm text-gray-600">
               Requires 8–16 members. This will lock the league size.
             </p>
+          </form>
+        </div>
+      )}
+
+      {isOwner && (
+        <div className="mt-6 rounded border p-4">
+          <h2 className="font-semibold">Import Pokémon Pool</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Upload a CSV or JSON with columns: form_key, base_points, base_projection, positions, sprite_url (optional).
+          </p>
+
+          <form action={importPool} className="mt-3 flex flex-col gap-3">
+            <input type="hidden" name="leagueId" value={league.id} />
+
+            <input
+              type="file"
+              name="file"
+              accept=".csv,.json"
+              className="rounded border p-2"
+              required
+            />
+
+            <button className="rounded bg-black px-4 py-2 text-white">
+              Import
+            </button>
           </form>
         </div>
       )}
